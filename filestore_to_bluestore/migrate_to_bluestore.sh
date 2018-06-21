@@ -32,16 +32,35 @@
 #
 #
 
-this=$0
+this=$(basename $0)
 export this
 
 LC_ALL=C
 export LC_ALL
 
+verbose() {
+	echo "$@" >/dev/stderr
+}
+
+ok() {
+	verbose "[ok] $@"
+}
+
+warn() {
+	verbose "[warn] $@"
+}
+
+fail() {
+	verbose "[fail] $@"
+}
+
+inf() {
+	verbose "[info] $@"
+}
 
 if [ -x $1 ]
 then
-	echo "Usage: $0 NUMERIC_OSD_ID_RUNNING_ON_THIS_PARTICULAR_HOST" >/dev/stderr
+	verbose "Usage: ${this} NUMERIC_OSD_ID_RUNNING_ON_THIS_PARTICULAR_HOST"
 	exit 5
 fi
 
@@ -50,14 +69,14 @@ export ID
 
 if [ $(ceph osd tree | grep "osd.${ID} " | wc -l) -eq 0 ]
 then
-	echo "$0: osd.${ID} does not exist in this ceph cluster. Exiting." >/dev/stderr
+	fail "osd.${ID} does not exist in this ceph cluster. Exiting."
 	exit 5
 fi
 
 
 if [ $(systemctl list-units | grep ceph-osd@${ID}.service | wc -l) -eq 0 ]
 then
-	echo "$0: osd.${ID} is not running on this host. Exiting." >/dev/stderr
+	fail "osd.${ID} is not running on this host. Exiting."
 	exit 5
 fi
 
@@ -66,33 +85,28 @@ fi
 current_store=$(ceph osd metadata ${ID} | awk '/osd_objectstore/{ print toupper(substr($2, 2, 4 )); }')
 if [ "_${current_store}" == "_BLUE" ]
 then
-	echo "$0: osd.${ID} is already running with bluestore. Nothing to do. Exiting." >/dev/stderr
+	verbose "osd.${ID} is already running with bluestore. Nothing to do. Exiting."
 	exit 1
 elif [ "_${current_store}" != "_FILE" ]
 then
-	echo "$0: osd.${ID} is not filestore and not bluestore. Bailing." >/dev/stderr
+	verbose "osd.${ID} is not filestore and not bluestore. Bailing."
 	exit 10
 fi
 
-verbose() {
-	echo "${this}: $@" >/dev/stderr
-}
 
-
-
-verbose "[ok] osd.${ID} is running on this host."
-verbose "[ok] osd.${ID} is formatted with filestore."
+ok " osd.${ID} is running on this host."
+ok "osd.${ID} is formatted with filestore."
 
 # 1. ceph osd out ID
 ceph osd out ${ID}
 RC=$?
 if [ $RC -gt 0 ]
 then
-	verbose "[fail] ceph osd out ${ID}"
+	fail "ceph osd out ${ID}"
 	verbose "Exiting. It's up to you to resolve this issue. Sorry"
 	exit 20
 else
-	verbose "[ok] ceph osd out ${ID}"
+	ok "ceph osd out ${ID}"
 fi
 sleep 1
 
@@ -112,23 +126,23 @@ assumed_device=/dev/$(find -L /sys/block/  -mindepth 2 -maxdepth 2 -type d -name
 
 assumed_partition="/dev/${assumed_partition}"
 
-verbose "[info] osd.${ID} has ${assumed_partition} on device ${assumed_device} mounted on ${assumed_mountpoint}"
+inf "osd.${ID} has ${assumed_partition} on device ${assumed_device} mounted on ${assumed_mountpoint}"
 
 # 3b. double check
 # - Test if the resulting device is indeed a block special device"
 if [ $(stat -c "%F" ${assumed_device} | grep -i 'block' | wc -l) -eq 1 ]
 then
-	verbose "[info] Device ${assumed_device} for osd.${ID} is verified as block device. good."
+	inf "Device ${assumed_device} for osd.${ID} is verified as block device. good."
 else
-	verbose "[fail] Underlaying device ${assumed_device} obviously for osd.${ID} is NOT a block device. Bailing."
+	fail "Underlaying device ${assumed_device} obviously for osd.${ID} is NOT a block device. Bailing."
 	exit 20
 fi
 # - Test if we find the partition and the mountpoint again in the mountline (just double check)
 if [ $(mount | grep "${assumed_partition}" | grep "${assumed_mountpoint}" | wc -l) -eq 1 ]
 then
-	verbose "[info] Just double checked if ${assumed_partition} is really mounted on ${assumed_mountpoint}. good."
+	inf "Just double checked if ${assumed_partition} is really mounted on ${assumed_mountpoint}. good."
 else
-	verbose "[fail] Double checked and did not find ${assumed_partition} mounted on ${assumed_mountpoint}. Bailing."
+	fail "Double checked and did not find ${assumed_partition} mounted on ${assumed_mountpoint}. Bailing."
 	exit 20
 fi
 
@@ -136,10 +150,10 @@ umount ${assumed_mountpoint}
 RC=$?
 if [ $RC -gt 0 ]
 then
-	verbose "[fail] Unable to unmount ${assumed_mountpoint}. This should not happen. Bailing."
+	fail "Unable to unmount ${assumed_mountpoint}. This should not happen. Bailing."
 	exit 20
 else
-	verbose "[ok] umount ${assumed_mountpoint}"
+	ok "umount ${assumed_mountpoint}"
 fi
 
 verbose "#### UNTIL HERE, EVERYTHINGS HARMLESS AND REVERTABLE. HIT CTRL-C TO ABORT - OR ENTER TO MOVE ON. ####"
@@ -151,38 +165,38 @@ ceph-volume lvm zap ${assumed_device}
 RC=$?
 if [ $RC -gt 0 ]
 then
-	verbose "[fail] ceph-volume lvm zap ${assumed_device} - anyway we try to continue..."
+	fail "ceph-volume lvm zap ${assumed_device} - anyway we try to continue..."
 	result=$[result+1]
 else
-	verbose "[ok] ceph-volume lvm zap ${assumed_device}"
+	ok "ceph-volume lvm zap ${assumed_device}"
 fi
 
 ceph osd destroy ${ID} --yes-i-really-mean-it
 RC=$?
 if [ $RC -gt 0 ]
 then
-	verbose "[fail] ceph osd destroy ${ID} --yes-i-really-mean-it - anyway we try to continue..."
+	fail "ceph osd destroy ${ID} --yes-i-really-mean-it - anyway we try to continue..."
 	result=$[result+1]
 else
-	verbose "[ok] ceph osd destroy ${ID} --yes-i-really-mean-it"
+	ok "ceph osd destroy ${ID} --yes-i-really-mean-it"
 fi
 
 ceph-volume lvm create --bluestore --data ${assumed_device} --osd-id ${ID}
 RC=$?
 if [ $RC -gt 0 ]
 then
-	verbose "[fail] ceph-volume lvm create --bluestore --data ${assumed_device} --osd-id ${ID}"
+	fail "ceph-volume lvm create --bluestore --data ${assumed_device} --osd-id ${ID}"
 	result=$[result+1]
 else
-	verbose "[ok] ceph-volume lvm create --bluestore --data ${assumed_device} --osd-id ${ID}"
+	ok "ceph-volume lvm create --bluestore --data ${assumed_device} --osd-id ${ID}"
 fi
 
 
 if [ $result -gt 0 ]
 then
-	verbose "[warn] $result errors happened...."
+	warn "$result errors happened."
 	exit 25
 else
-	verbose "[ok] Your osd.${ID} should now be on bluestore."
+	ok "Your osd.${ID} should now be on bluestore."
 fi
 
