@@ -47,7 +47,7 @@
 
 	node:# ceph mgr module enable dashboard
 
-# 7. Verify dashboard
+## 7. Verify dashboard
 
 
 	node:# ceph mgr module ls
