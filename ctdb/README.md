@@ -2,27 +2,24 @@
 
 This document describes the installation of a number of Samba-CTDB-Gateways in front of a Ceph cluster that serves a CephFS.
 
-Distribution is Ubuntu 19.04 with Samba 4.10 packages.
+Distribution is Ubuntu 24.04 with Samba 4.19 packages.
 
 ## Installation of necessary packages
 
-	apt install ceph-common smbclient samba ctdb winbind libnss-winbind libpam-winbind krb5-user quota
-	
-	systemctl stop smbd.service nmbd.service winbind.service
-	
-	systemctl disable smbd.service nmbd.service winbind.service
+	apt install ceph-common smbclient samba ctdb winbind libnss-winbind libpam-winbind krb5-user quota samba-vfs-modules samba-vfs-modules-extra
+	systemctl disable --now smbd.service nmbd.service winbind.service
 
 The latter three services will be started by ctdbd and not systemd.
 
 ## Mount CephFS
 
-	echo "mon1:6789,mon2:6789,mon3:6789:/	/mnt/cephfs	ceph	_netdev,name=cephfs,secretfile=/etc/ceph/ceph.client.cephfs.secret 0 0" >> /etc/fstab
+	echo ":/smb /srv/smb ceph name=smb,ms_mode=crc 0 0" >> /etc/fstab
 
-Put the secret key for client.cephfs in the file `/etc/ceph/ceph.client.cephfs.secret`.
+Put the keyring for client.smb in the file `/etc/ceph/ceph.client.smb.keyring` and add a `/etc/ceph/ceph.conf`: `ceph orch client-keyring set client.smb label:smb`
 
-	mkdir /mnt/cephfs
+	mkdir /srv/smb
 
-	mount /mnt/cephfs
+	mount /srv/smb
 
 ## Configuration of CTDB
 
