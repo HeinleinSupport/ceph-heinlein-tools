@@ -52,6 +52,12 @@ The file `/etc/ctdb/public_addresses` contains the list of service IPs (same amo
 
 The public addresses need to be put into the DNS services for the domain as multiple A records for the name of the fileserver cluster. This creates a round-robin DNS entry which load-balances the clients across the nodes.
 
+## Samba
+
+On all nodes create a root password to initialize the Samba databases.
+
+        smbpasswd -a root
+
 ### smb.conf
 
 With CTDB all Samba configuration is stored in the clustered databases. The file `/etc/samba/smb.conf` only contains:
