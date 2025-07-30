@@ -28,11 +28,11 @@ Put the keyring for client.smb in the file `/etc/ceph/ceph.client.smb.keyring` a
 The ctdb.conf file contains the recovery lock location in the cluster section. This has to be a file on the shared CephFS:
 
 	[cluster]
-		recovery lock = /mnt/cephfs/ctdb/lock
+		recovery lock = /srv/smb/ctdb/lock
 
 Create the necessary directory
 
-	mkdir /mnt/cephfs/ctdb
+	mkdir /srv/smb/ctdb
 
 ### nodes
 
@@ -135,15 +135,15 @@ The Samba VFS module for Ceph can be used to access the CephFS directly from the
 		path = /export/sharename
 		kernel share modes = no
 		vfs objects = ceph
-		ceph:user_id = cephfs
+		ceph:user_id = smb
 
 The directory for the share has to be created:
 
-	mkdir -p /mnt/cephfs/export/sharename
+	mkdir -p /srv/smb/export/sharename
 	
 E.g. /mnt/cephfs is the mount point of the CephFS at the nodes and therefor the root directory for the share paths.
 	
-Samba needs `/etc/ceph/ceph.conf` to know about the monitors and the keyring file for the client.cephfs in `/etc/ceph/ceph.client.cephfs.keyring`.
+Samba needs `/etc/ceph/ceph.conf` to know about the monitors and the keyring file for the client.cephfs in `/etc/ceph/ceph.client.smb.keyring`.
 
 ## net conf
 
