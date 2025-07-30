@@ -23,25 +23,6 @@ Put the keyring for client.smb in the file `/etc/ceph/ceph.client.smb.keyring` a
 
 ## Configuration of CTDB
 
-### ctdb.service unit
-
-The ctdb.service unit needs an override. Place the following contents in `/etc/systemd/system/ctdb.service.d/override.conf`:
-
-	[Unit]
-	After=mnt-cephfs.mount
-	RequiresMountsFor=/mnt/cephfs
-	
-	[Service]
-	ExecStartPre=/bin/mkdir -p /run/ctdb
-
-There are two bug reports open: [No /run/ctdb directory](https://bugs.launchpad.net/ubuntu/+source/ctdb/+bug/1821775) and [No /var/lib/ctdb directories](https://bugs.launchpad.net/ubuntu/+source/ctdb/+bug/1828799)
-
-The following directories have to be created:
-
-	mkdir -p /var/lib/ctdb/volatile
-	mkdir /var/lib/ctdb/persistent
-	mkdir /var/lib/ctdb/state
-
 ### ctdb.conf
 
 The ctdb.conf file contains the recovery lock location in the cluster section. This has to be a file on the shared CephFS:
