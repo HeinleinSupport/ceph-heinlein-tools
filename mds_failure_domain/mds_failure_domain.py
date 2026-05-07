@@ -46,6 +46,15 @@ cluster.connect()
 nodes = {}
 root_id = None
 host_ids = {}
+mds_host = {}
+
+#
+# Get MDS metadata
+#
+res = cluster.command_mon("mds metadata")
+if res[0] == 0:
+    for mds_data in json.loads(res[1]):
+        mds_host[mds_data["name"]] = mds_data["hostname"]
 
 #
 # Get the OSD tree (CRUSH map) and put it in a Tree structure
@@ -97,9 +106,9 @@ if res[0] == 0:
 # Check ranks for each filesystems for standby-replay MDS
 #
 
-def get_failure_domain(crush_map: Tree, host_ids, mds: str, failure_domain_type: str):
+def get_failure_domain(crush_map: Tree, host_ids, mds: str, mds_host, failure_domain_type: str):
     # hostname is the MDS name's second part. TODO: always?
-    host = mds.split(".")[1]
+    host = mds_host[mds]
     host_id = host_ids.get(host)
     for node_id in crush_map.rsearch(host_id):
         bucket = crush_map.get_node(node_id)
@@ -111,9 +120,9 @@ for fs, ranks in filesystems.items():
     for rank, mdsinfo in ranks.items():
         if "up:standby-replay" in mdsinfo and "up:active" in mdsinfo:
             active = mdsinfo["up:active"]
-            active_fd = get_failure_domain(crush_map, host_ids, active, failure_domain_type)
+            active_fd = get_failure_domain(crush_map, host_ids, active, mds_host, failure_domain_type)
             standby = mdsinfo["up:standby-replay"]
-            standby_fd = get_failure_domain(crush_map, host_ids, standby, failure_domain_type)
+            standby_fd = get_failure_domain(crush_map, host_ids, standby, mds_host, failure_domain_type)
             print(standby, standby_fd)
             print(active, active_fd)
             if active_fd == standby_fd and standby_fd:
