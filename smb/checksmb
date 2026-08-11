@@ -1,0 +1,70 @@
+#!/bin/bash
+# -*- encoding: utf-8 -*-
+
+#
+# Checkmk local check for Samba shares and connections
+#
+
+# (c) 2026 Heinlein Support GmbH
+#          Robert Sander <r.sander@heinlein-support.de>
+
+# This is free software;  you can redistribute it and/or modify it
+# under the  terms of the  GNU General Public License  as published by
+# the Free Software Foundation in version 2.  This file is distributed
+# in the hope that it will be useful, but WITHOUT ANY WARRANTY;  with-
+# out even the implied warranty of  MERCHANTABILITY  or  FITNESS FOR A
+# PARTICULAR PURPOSE. See the  GNU General Public License for more de-
+# ails.  You should have  received  a copy of the  GNU  General Public
+# License along with GNU Make; see the file  COPYING.  If  not,  write
+# to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
+# Boston, MA 02110-1301 USA.
+
+smbstatus=$(command -v cephadm-smbstatus.sh)
+if [ -z "$smbstatus" ]; then
+  smbstatus=$(command -v smbstatus)
+fi
+if [ -z "$smbstatus" ]; then
+  exit
+fi
+
+ctdb=$(command -v cephadm-ctdb.sh)
+if [ -z "$ctdb" ]; then
+  ctdb=$(command -v ctdb)
+fi
+
+if [ -n "$ctdb" ]; then
+
+  nodeid=$($ctdb status | grep "THIS NODE" | cut -f 1 -d " " | cut -f 2 -d ":")
+
+  grepconn="^$nodeid:"
+  grepshar=" $nodeid:"
+else
+  grepconn="."
+  grepshar="."
+fi
+
+connections=$( $smbstatus -p | tail -n +5 | grep "$grepconn" | wc -l )
+
+if [ $connections -ne 1 ]; then
+  plural="s"
+fi
+
+echo "P \"Samba Connections\" connections=$connections $connections connection$plural open"
+
+echo -n "P \"Samba Shares\" "
+shares=$(
+first=0
+$smbstatus -S | tail -n +4 | head -n -1 | grep "$grepshar" | cut -f 1 -d " " | sort | uniq -c | while read count share; do
+    if [ $first -gt 0 ]; then
+        echo -n "|"
+    fi
+    echo -n "share_$share=$count"
+    first+=1
+done
+)
+
+if [ -z "$shares" ]; then
+    echo "- No shares open"
+else
+    echo $shares
+fi
