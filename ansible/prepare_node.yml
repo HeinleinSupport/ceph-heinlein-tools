@@ -39,6 +39,7 @@
           - psmisc
           - fio
           - expect
+          - mosh
     - name: remove packages
       apt:
         name:
