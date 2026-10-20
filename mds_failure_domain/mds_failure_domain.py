@@ -133,9 +133,9 @@ for fs, ranks in filesystems.items():
     for rank, mdsinfo in ranks.items():
         if "up:standby-replay" in mdsinfo and "up:active" in mdsinfo:
             active = mdsinfo["up:active"]
-            active_fd = get_failure_domain(crush_map, host_ids, active, mds_host, failure_domain_type)
+            active_fd = get_failure_domain(crush_map, host_ids, active, mds_host, args.failure_domain_type)
             standby = mdsinfo["up:standby-replay"]
-            standby_fd = get_failure_domain(crush_map, host_ids, standby, mds_host, failure_domain_type)
+            standby_fd = get_failure_domain(crush_map, host_ids, standby, mds_host, args.failure_domain_type)
             print(standby, standby_fd)
             print(active, active_fd)
             if active_fd == standby_fd and standby_fd:
