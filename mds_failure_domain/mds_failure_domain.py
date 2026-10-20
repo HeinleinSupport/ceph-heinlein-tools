@@ -19,13 +19,15 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-failure_domain_type="room"
+failure_domain_type="rack"
 ceph_config='/etc/ceph/ceph.conf'
 ceph_client='client.admin'
 
 import rados
 import json
-from treelib import Tree
+import argparse
+from treelib.tree import Tree
+from pprint import pprint
 
 class RadosCMD(rados.Rados):
     def command_mon(self, cmd, params=None):
@@ -39,6 +41,14 @@ class RadosCMD(rados.Rados):
         return self.osd_command(osdid, json.dumps({'prefix': cmd, 'format': 'json'}), b'', timeout=5)
     def command_pg(self, pgid, cmd):
         return self.pg_command(pgid, json.dumps({'prefix': cmd, 'format': 'json'}), b'', timeout=5)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--debug', action='store_true')
+parser.add_argument('failure_domain_type', nargs="?", default=failure_domain_type, help=f"The bucket type of the failure domain, default is {failure_domain_type}.")
+args = parser.parse_args()
+
+if args.debug:
+    pprint(args)
 
 cluster = RadosCMD(conffile=ceph_config, name=ceph_client)
 cluster.connect()
