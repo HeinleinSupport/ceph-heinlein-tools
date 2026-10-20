@@ -54,7 +54,8 @@ mds_host = {}
 res = cluster.command_mon("mds metadata")
 if res[0] == 0:
     for mds_data in json.loads(res[1]):
-        mds_host[mds_data["name"]] = mds_data["hostname"]
+        if "hostname" in mds_data:
+            mds_host[mds_data["name"]] = mds_data["hostname"]
 
 #
 # Get the OSD tree (CRUSH map) and put it in a Tree structure
@@ -108,12 +109,14 @@ if res[0] == 0:
 
 def get_failure_domain(crush_map: Tree, host_ids, mds: str, mds_host, failure_domain_type: str):
     # hostname is the MDS name's second part. TODO: always?
-    host = mds_host[mds]
-    host_id = host_ids.get(host)
-    for node_id in crush_map.rsearch(host_id):
-        bucket = crush_map.get_node(node_id)
-        if bucket.data["type"] == failure_domain_type:
-            return bucket.data["name"]
+    if mds in mds_host:
+        host = mds_host[mds]
+        host_id = host_ids.get(host)
+        for node_id in crush_map.rsearch(host_id):
+            bucket = crush_map.get_node(node_id)
+            assert bucket is not None
+            if bucket.data["type"] == failure_domain_type:
+                return bucket.data["name"]
     return None
 
 for fs, ranks in filesystems.items():
